@@ -6,4 +6,5 @@ public class WxPayException  extends Exception{
         super(errorMsg);
     }
 
+
 }

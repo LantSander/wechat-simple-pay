@@ -7,7 +7,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 @Data
-public class PrepareOrder {
+public class UnifiedOrderRequest {
     //订单编号
     @NotBlank(message = "订单编号不能为空", groups = prep.class)
     private String outTradeNo;
@@ -30,6 +30,7 @@ public class PrepareOrder {
     private String tradeType = "JSAPI";
     private String appid;
     private String mchId;
+    private String mchSecret;
     private String notifyUrl;
 
     //用于分组，校验不同类型的请求规范

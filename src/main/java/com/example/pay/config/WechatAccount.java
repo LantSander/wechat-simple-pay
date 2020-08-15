@@ -7,17 +7,19 @@ import org.springframework.stereotype.Component;
 
 @Data
 @ToString
-@EnableConfigurationProperties(WxMiniAppAccount.class)
+@EnableConfigurationProperties(WechatAccount.class)
 @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "wxminiapp")
 @Component
-public class WxMiniAppAccount {
+public class WechatAccount {
     private String appid;
-    private String secret;
+    private String mchSecret;
 
     //商户id
     private String mchId;
 
     //支付成功回调地址
     private String notifyUrl;
+
+    private String appSecret;
 
 }

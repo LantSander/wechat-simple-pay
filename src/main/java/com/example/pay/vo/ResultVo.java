@@ -3,16 +3,14 @@ package com.example.pay.vo;
 import lombok.Data;
 
 @Data
-public class ResultVo {
+public class ResultVo<T> {
 
+    /** 错误码. */
     private Integer code;
-    private Object data;
+
+    /** 提示信息. */
     private String msg;
 
-    public ResultVo(Integer code, Object data, String msg) {
-        this.code = code;
-        this.data = data;
-        this.msg = msg;
-    }
-    public ResultVo(){}
+    /** 具体内容. */
+    private T data;
 }
