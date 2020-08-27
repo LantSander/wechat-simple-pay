@@ -21,5 +21,6 @@ public class WechatAccount {
     private String notifyUrl;
 
     private String appSecret;
+    private String certPath;
 
 }

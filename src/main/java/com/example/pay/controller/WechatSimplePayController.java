@@ -4,12 +4,19 @@ package com.example.pay.controller;
 import com.example.pay.config.WechatAccount;
 import com.example.pay.service.WechatPayService;
 import com.example.pay.service.WechatService;
+import com.example.pay.utils.ResultVOUtil;
+import com.example.pay.vo.RefundRequest;
 import com.example.pay.vo.ResultVo;
 import com.example.pay.vo.UnifiedOrderRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.MethodParameter;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+
+import javax.xml.transform.Result;
 
 @Slf4j
 @RestController
@@ -43,5 +50,13 @@ public class WechatSimplePayController {
     public String notifyOrderResult(@RequestBody String xmlData) {
         return wechatPayService.notifyOrderResult(xmlData);
     }
+
+    //退款申请
+    @PostMapping("/refund")
+    public ResultVo refund(@RequestBody RefundRequest refundRequest) {
+        //loop参数必须=0
+        return wechatPayService.refund(refundRequest);
+    }
+
 
 }

@@ -5,14 +5,21 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Charsets;
 import com.google.api.client.util.IOUtils;
 import com.google.gson.Gson;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import javax.net.ssl.SSLContext;
+import java.io.*;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.security.PublicKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +27,7 @@ import java.util.Map;
 /**
  * 发送Http请求工具类，底层使用google的高性能http组件
  */
-public class HttpUtils
-{
+public class HttpUtils {
     private static final String DEFAULT_CHARSET = "UTF-8";
     private static final String POST_DEFAULT_CONTENT_TYPE = "application/x-www-form-urlencoded";
 
@@ -33,8 +39,7 @@ public class HttpUtils
      * @return HttpResponse对象
      * @throws IOException
      */
-    public static HttpResponse doGet(String requestUrl, Map<String, String> paramMap) throws IOException
-    {
+    public static HttpResponse doGet(String requestUrl, Map<String, String> paramMap) throws IOException {
         HttpRequestFactory requestFactory = new NetHttpTransport().createRequestFactory();
         GenericUrl genericUrl = new GenericUrl(requestUrl + buildParams(paramMap));
         return requestFactory.buildGetRequest(genericUrl).execute();
@@ -48,8 +53,7 @@ public class HttpUtils
      * @return 响应的字符串
      * @throws IOException
      */
-    public static String doSimpleGet(String requestUrl, Map<String, String> paramMap) throws IOException
-    {
+    public static String doSimpleGet(String requestUrl, Map<String, String> paramMap) throws IOException {
         return doGet(requestUrl, paramMap).parseAsString();
     }
 
@@ -61,8 +65,7 @@ public class HttpUtils
      * @return HttpResponse对象
      * @throws IOException
      */
-    public static HttpResponse doPost(String requestUrl, Map<String, String> paramMap) throws IOException
-    {
+    public static HttpResponse doPost(String requestUrl, Map<String, String> paramMap) throws IOException {
         String queryString = buildParams(paramMap);
         HttpRequestFactory requestFactory = new NetHttpTransport().createRequestFactory();
         GenericUrl genericUrl = new GenericUrl(requestUrl);
@@ -70,11 +73,11 @@ public class HttpUtils
         return requestFactory.buildPostRequest(genericUrl, httpContent).execute();
     }
 
-    public static String  doSimplePostByQueryString(String requestUrl, String queryString)  throws IOException
-    {
+    public static String doSimplePostByQueryString(String requestUrl, String queryString) throws IOException {
         HttpRequestFactory requestFactory = new NetHttpTransport().createRequestFactory();
         GenericUrl genericUrl = new GenericUrl(requestUrl);
         HttpContent httpContent = new ByteArrayContent(POST_DEFAULT_CONTENT_TYPE, queryString.getBytes(DEFAULT_CHARSET));
+
         return parseAsStringUTF8(requestFactory.buildPostRequest(genericUrl, httpContent).execute());
     }
 
@@ -93,11 +96,12 @@ public class HttpUtils
 
     /**
      * json参数方式POST提交,请求体是JSON格式
+     *
      * @param url
-     * @param params   请求参数Map，Map会转为JSON格式发送请求
+     * @param params 请求参数Map，Map会转为JSON格式发送请求
      * @return
      */
-    public static String  doSimplePostBodyJson(String requestUrl, Map<String,String> params) throws IOException {
+    public static String doSimplePostBodyJson(String requestUrl, Map<String, String> params) throws IOException {
         HttpContent httpContent = new ByteArrayContent("application/json",
                 new Gson().toJson(params).getBytes(Charsets.UTF_8));
         HttpRequestFactory requestFactory = new NetHttpTransport().createRequestFactory();
@@ -113,54 +117,98 @@ public class HttpUtils
      * @return 响应的字符串
      * @throws IOException
      */
-    public static String doSimplePost(String requestUrl, Map<String, String> paramMap) throws IOException
-    {
+    public static String doSimplePost(String requestUrl, Map<String, String> paramMap) throws IOException {
         return doPost(requestUrl, paramMap).parseAsString();
     }
 
-    private static String buildParams(Map<String, String> paramMap)
-    {
+    private static String buildParams(Map<String, String> paramMap) {
         String queryString = "";
-        if (paramMap != null && !paramMap.isEmpty())
-        {
-            try
-            {
+        if (paramMap != null && !paramMap.isEmpty()) {
+            try {
                 StringBuilder sb = new StringBuilder();
-                for (Map.Entry<String, String> entrySet : paramMap.entrySet())
-                {
+                for (Map.Entry<String, String> entrySet : paramMap.entrySet()) {
                     sb.append(entrySet.getKey())
-                      .append("=")
-                      .append(URLEncoder.encode(entrySet.getValue(), DEFAULT_CHARSET))
-                      .append("&");
+                            .append("=")
+                            .append(URLEncoder.encode(entrySet.getValue(), DEFAULT_CHARSET))
+                            .append("&");
                 }
                 sb.deleteCharAt(sb.length() - 1);
                 queryString = sb.toString();
-            }
-            catch (UnsupportedEncodingException e)
-            {
+            } catch (UnsupportedEncodingException e) {
                 // do nothing
             }
         }
         return queryString;
     }
 
-    public static void main(String[] args) {
-        Map<String,String> map=new HashMap<>();
-        map.put("symbol","SZ000789");
-        map.put("type","all");
-        map.put("is_detail","true");
-        map.put("count","5");
-        map.put("timestamp", String.valueOf(new Date().getTime()));
-        String url="https://stock.xueqiu.com/v5/stock/finance/cn/indicator.json";
-        String res = null;
+
+    public static SSLContext initSSLContext(String filepath, String mchId) throws Exception {
+        KeyStore keyStore = KeyStore.getInstance("PKCS12");
+        //P12文件目录 证书路径，
+        FileInputStream instream = new FileInputStream(filepath + "apiclient_cert.p12");
         try {
-            res = doSimpleGet(url, map);
-            System.out.println(res);
-        } catch (IOException e) {
-            e.printStackTrace();
+            keyStore.load(instream, mchId.toCharArray());
+        } finally {
+            instream.close();
         }
-        System.out.println(res);
+        return SSLContexts.custom()
+                .loadKeyMaterial(keyStore, mchId.toCharArray())//这里也是写密码的
+                .build();
+
     }
+
+
+    //微信退款专用
+    public static String doPostBySllContext(SSLContext sslContext, String url, String param) throws Exception {
+
+        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
+                sslContext,
+                SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+        CloseableHttpClient httpclient = HttpClients.custom()
+                .setSSLSocketFactory(sslsf)
+                .build();
+        try {
+            HttpPost httpost = new HttpPost(url); // 设置响应头信息
+            httpost.addHeader("Connection", "keep-alive");
+            httpost.addHeader("Accept", "*/*");
+            httpost.addHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            httpost.addHeader("Host", "api.mch.weixin.qq.com");
+            httpost.addHeader("X-Requested-With", "XMLHttpRequest");
+            httpost.addHeader("Cache-Control", "max-age=0");
+            httpost.addHeader("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0) ");
+            httpost.setEntity(new StringEntity(param, "UTF-8"));
+            CloseableHttpResponse response = httpclient.execute(httpost);
+            try {
+                HttpEntity entity = response.getEntity();
+
+                String jsonStr = EntityUtils.toString(response.getEntity(), "UTF-8");
+                EntityUtils.consume(entity);
+                return jsonStr;
+            } finally {
+                response.close();
+            }
+        } finally {
+            httpclient.close();
+        }
+
+//    public static void main(String[] args) {
+//        Map<String,String> map=new HashMap<>();
+//        map.put("symbol","SZ000789");
+//        map.put("type","all");
+//        map.put("is_detail","true");
+//        map.put("count","5");
+//        map.put("timestamp", String.valueOf(new Date().getTime()));
+//        String url="https://stock.xueqiu.com/v5/stock/finance/cn/indicator.json";
+//        String res = null;
+//        try {
+//            res = doSimpleGet(url, map);
+//            System.out.println(res);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println(res);
+//    }
+
 
 //
 //    public static void main(String[] args)
@@ -247,4 +295,5 @@ public class HttpUtils
 //            e.printStackTrace();
 //        }
 //    }
+    }
 }

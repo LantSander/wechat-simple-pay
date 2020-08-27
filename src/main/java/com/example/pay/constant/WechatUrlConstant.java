@@ -10,5 +10,9 @@ public interface WechatUrlConstant {
     //发起预支付
     String unifiedorderUrl="https://api.mch.weixin.qq.com/pay/unifiedorder";
 
+    String refundUrl="https://api.mch.weixin.qq.com/secapi/pay/refund";
+
+    String refundNotifyUrl=null;
+
 
 }
